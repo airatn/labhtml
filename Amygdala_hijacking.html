@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лаборатория эмоционального Контроля</title>
+    <!-- Подключение Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключение Chart.js для графиков -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Кастомный стиль для ползунков */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #4a5568; /* bg-gray-700 */
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4299e1; /* bg-blue-500 */
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4299e1; /* bg-blue-500 */
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+
+        /* --- ИЗМЕНЕНИЕ: Анимация "Blob" + Пульсация --- */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        
+        @keyframes blob-shape {
+          0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+          /* ИЗМЕНЕНИЕ: Добавлены 2 новых, более выразительных кадра (п.4) */
+          25% { border-radius: 70% 30% 60% 40% / 40% 70% 30% 60%; }
+          50% { border-radius: 30% 70% 40% 60% / 70% 40% 60% 30%; }
+          75% { border-radius: 40% 60% 70% 30% / 60% 30% 70% 40%; }
+        }
+
+        /* Базовый стиль blob */
+        #status-indicator {
+            animation-name: blob-shape, pulse;
+            animation-iteration-count: infinite;
+            animation-timing-function: ease-in-out;
+            transition: background-color 0.5s ease; /* Плавная смена цвета */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased">
+
+    <!-- Основной контейнер -->
+    <div class="container mx-auto p-4 min-h-screen flex flex-col">
+        <h1 class="text-3xl text-center mb-6 relative">
+            <span class="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent drop-shadow-sm hover:from-cyan-300 hover:to-blue-400 transition-all duration-300">
+                Цифровая лаборатория "Amygdala hijacking"
+            </span>
+            <span class="text-sm text-gray-400 font-medium tracking-wide">
+                А.Нурутдинов ©
+            </span>
+            <button id="help-model" class="absolute top-0 right-0 w-8 h-8 rounded-full bg-blue-600 text-white text-lg font-bold flex items-center justify-center hover:bg-blue-700 transition-all">?</button>
+        </h1>
+        
+        <!-- Верхняя секция: Панели управления и эмуляции -->
+        <div class="flex flex-col lg:flex-row gap-4">
+
+            <!-- 1. Левая панель: Лимбическая система -->
+            <div class="lg:w-1/4 bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 text-orange-400 flex justify-between items-center">
+                    Лимбическая Система ("Быстрый Мозг")
+                    <button id="help-limbic" class="w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center hover:bg-blue-700 transition-all">?</button>
+                </h2>
+                
+                <!-- Амигдала -->
+                <div class="mb-6">
+                    <label for="amygdala-sensitivity" class="block mb-2 text-sm font-medium">
+                        Амигдала: Чувствительность (<span id="amygdala-value">50</span>)
+                    </label>
+                    <input id="amygdala-sensitivity" type="range" min="1" max="100" value="50" class="w-full">
+                    <p class="text-xs text-gray-400 mt-1">Как быстро и сильно реагирует "сигнализация".</p>
+                </div>
+                
+                <!-- Гиппокамп -->
+                <div class="mb-6">
+                    <label for="hippocampus-context" class="block mb-2 text-sm font-medium">
+                        Гиппокамп: Четкость Контекста (<span id="hippocampus-value">50</span>)
+                    </label>
+                    <input id="hippocampus-context" type="range" min="1" max="100" value="50" class="w-full">
+                    <p class="text-xs text-gray-400 mt-1">Насколько хорошо мозг сверяет стимул с прошлым опытом ("Это реальная угроза?").</p>
+                </div>
+
+                <!-- Фоновый Стресс -->
+                <div class="mb-6">
+                    <label for="baseline-stress" class="block mb-2 text-sm font-medium">
+                        Фоновый Стресс (<span id="baseline-stress-value">10</span>)
+                    </label>
+                    <input id="baseline-stress" type="range" min="0" max="50" value="10" class="w-full">
+                    <p class="text-xs text-gray-400 mt-1">Начальный уровень "взвинченности" (кортизол).</p>
+                </div>
+            </div>
+
+            <!-- 2. Центральная панель: Эмуляция -->
+            <div class="lg:w-1/2 bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col items-center justify-center min-h-[300px]">
+                <!-- ИЗМЕНЕНИЕ: Убран заголовок "Симуляция Поведения" -->
+                
+                <!-- Blob -->
+                <div id="status-indicator" class="w-48 h-48 bg-green-500 flex items-center justify-center mb-4 shadow-inner state-calm">
+                    <!-- ИЗМЕНЕНИЕ: Добавлена цифровая оценка -->
+                    <span id="status-text" class="text-2xl font-bold text-white text-center">Спокойствие (0)</span>
+                </div>
+                
+                <!-- Цифровые индикаторы -->
+                <div class="flex gap-6 text-center mb-3">
+                    <div>
+                        <span id="digital-pfc" class="text-3xl font-bold text-blue-400">0</span>
+                        <span class="block text-sm text-gray-400">Усилие ПФК</span>
+                    </div>
+                    <div>
+                        <span id="digital-limbic" class="text-3xl font-bold text-orange-400">0</span>
+                        <span class="block text-sm text-gray-400">Амигдала</span>
+                    </div>
+                </div> 
+
+                <!-- ИЗМЕНЕНИЕ: Индикаторы в одну строку -->
+                <div class="w-full max-w-md mb-4 px-4 flex flex-col sm:flex-row gap-4">
+                    <div class="w-full sm:w-1/2">
+                        <label class="block text-sm font-medium text-left">Ресурс ПФК</label>
+                        <div class="w-full bg-gray-700 rounded-full h-2.5 mt-1">
+                            <div id="pfc-energy-bar" class="bg-green-500 h-2.5 rounded-full transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="w-full sm:w-1/2">
+                        <label class="block text-sm font-medium text-left">Возбуждение ЛС</label>
+                        <div class="w-full bg-gray-700 rounded-full h-2.5 mt-1">
+                            <div id="limbic-excitation-bar" class="bg-orange-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Конец переноса -->
+
+                <!-- ИЗМЕНЕНИЕ: Выразительный стимул -->
+                <div id="stimulus-display" class="text-lg text-yellow-300 font-bold h-12 text-center">Ожидание стимула...</div>
+                <!-- ИЗМЕНЕНИЕ: response-display УДАЛЕН -->
+            </div>
+
+            <!-- 3. Правая панель: Префронтальная кора -->
+            <div class="lg:w-1/4 bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 text-blue-400 flex justify-between items-center">
+                    Префронтальная Кора ("Медленный Мозг")
+                    <button id="help-pfc" class="w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center hover:bg-blue-700 transition-all">?</button>
+                </h2>
+                
+                <!-- Самосознание -->
+                <div class="mb-6">
+                    <label for="pfc-awareness" class="block mb-2 text-sm font-medium">
+                        Самосознание (<span id="pfc-awareness-value">50</span>)
+                    </label>
+                    <input id="pfc-awareness" type="range" min="1" max="100" value="50" class="w-full">
+                    <p class="text-xs text-gray-400 mt-1">Как быстро вы "замечаете" реакцию.</p>
+                </div>
+                
+                <!-- Саморегуляция -->
+                <div class="mb-6">
+                    <label for="pfc-regulation" class="block mb-2 text-sm font-medium">
+                        Саморегуляция (<span id="pfc-regulation-value">50</span>)
+                    </label>
+                    <input id="pfc-regulation" type="range" min="1" max="100" value="50" class="w-full">
+                    <p class="text-xs text-gray-400 mt-1">Сила "тормоза" - способность успокоиться.</p>
+                </div>
+
+                <!-- Индикатор "Отключения" -->
+                <div id="hijack-indicator" class="opacity-0 transition-opacity duration-300 mt-3 mb-3 flex items-center justify-center p-2 rounded-lg bg-red-800 border border-red-600">
+                    <span class="text-red-300 font-bold text-sm">! ПФК ОТКЛЮЧЕНА (ПЕРЕЗАРЯДКА) !</span>
+                </div>
+
+                <!-- НОВИНКА: Интегральный показатель восстановления -->
+                <div class="mt-auto bg-gray-900 p-3 rounded-lg">
+                    <label class="block text-sm font-medium text-gray-400">Расчетная Скорость Восстановления:</label>
+                    <div id="recovery-rate-display" class="text-2xl font-bold text-blue-300 text-center">0.17</div>
+                    <p class="text-xs text-gray-400 mt-1 text-center">(Зависит от Самосознания и Саморегуляции)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Нижняя секция: Управление и Графики -->
+        <div class="mt-6 flex flex-col lg:flex-row gap-4">
+            
+            <!-- Левая колонка (Управление и Журнал) -->
+            <div class="lg:w-1/4 flex flex-col gap-4 relative h-100 overflow-y-auto"> <!-- ИЗМЕНЕНИЕ: ширина 1/3 -> 1/4 -->
+                <!-- Кнопки управления -->
+                <div class="bg-gray-800 rounded-lg shadow-xl p-4">
+                    <h3 class="text-lg font-semibold mb-3 text-center flex justify-center items-center gap-2">
+                        Панель Управления
+                        <button id="help-presets" class="w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center hover:bg-blue-700 transition-all">?</button>
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3 pb-10">
+                        <button id="stimulus-weak" class="px-4 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-700 transition-all w-full">Слабый</button>
+                        <button id="stimulus-strong" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 transition-all w-full">Сильный</button>
+                        <button id="stimulus-positive" class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 transition-all w-full">Позитив</button>
+                        <button id="reset-sim" class="px-4 py-2 rounded-lg bg-gray-600 hover:bg-gray-700 transition-all w-full">Сброс</button>
+                    </div>
+                    
+                    <div class="border-t border-gray-700 my-3"></div>
+                    
+                    <div class="grid grid-cols-2 gap-3 pb-6">
+                        <button id="preset-calm" class="px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 transition-all w-full text-sm">Профиль: Спокойный</button>
+                        <button id="preset-anxious" class="px-4 py-2 rounded-lg bg-orange-700 hover:bg-orange-800 transition-all w-full text-sm">Профиль: Тревожный</button>
+                        <button id="preset-stressed" class="px-4 py-2 rounded-lg bg-red-700 hover:bg-red-800 transition-all w-full text-sm col-span-2">Профиль: В Стрессе</button>
+                    </div>
+                </div>
+
+                <!-- НОВИНКА: Журнал Событий -->
+                <!-- ИЗМЕНЕНИЕ: Блок Журнала Событий УДАЛЕН отсюда -->
+            </div>
+
+            <!-- Графики (Правая колонка) -->
+            <!-- ИЗМЕНЕНИЕ: Контейнер для Графиков и Журнала -->
+            <div class="lg:w-3/4 flex flex-col lg:flex-row gap-4"> 
+                
+                <!-- Графики -->
+                <div class="lg:w-2/3 bg-gray-800 rounded-lg shadow-xl p-4"> <!-- ИЗМЕНЕНИЕ: ширина 2/3 (от 3/4) -->
+                    <h3 class="text-lg font-semibold mb-2 text-center">Поведенческие Графики</h3>
+                    <!-- ИЗМЕНЕНИЕ: Уменьшена высота -->
+                    <div class="relative h-72"> 
+                        <canvas id="reactionChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- НОВИНКА: Журнал Событий (ПЕРЕМЕЩЕН) -->
+                <div class="lg:w-1/3 bg-gray-800 rounded-lg shadow-xl p-4 flex flex-col">
+                    <h3 class="text-lg font-semibold mb-2 text-center">Журнал Событий</h3>
+                    <div id="event-log" class="h-72 overflow-y-auto bg-gray-900 rounded p-2 text-sm font-mono flex-grow">
+                        <div class="text-gray-500">Ожидание событий...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для пояснений -->
+    <div id="modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 opacity-0 pointer-events-none z-50">
+        <div class="bg-gray-800 text-white rounded-lg shadow-xl max-w-2xl w-full p-6 relative">
+            <button id="modal-close" class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+            <h3 id="modal-title" class="text-2xl font-bold mb-4">Пояснение</h3>
+            <p id="modal-content" class="text-gray-300"></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Получаем элементы управления
+            const sliders = {
+                amygdala: document.getElementById('amygdala-sensitivity'),
+                hippocampus: document.getElementById('hippocampus-context'),
+                awareness: document.getElementById('pfc-awareness'),
+                regulation: document.getElementById('pfc-regulation'),
+                stress: document.getElementById('baseline-stress'), 
+            };
+
+            const values = {
+                amygdala: document.getElementById('amygdala-value'),
+                hippocampus: document.getElementById('hippocampus-value'),
+                awareness: document.getElementById('pfc-awareness-value'),
+                regulation: document.getElementById('pfc-regulation-value'),
+                stress: document.getElementById('baseline-stress-value'), 
+            };
+
+            const buttons = {
+                weak: document.getElementById('stimulus-weak'),
+                strong: document.getElementById('stimulus-strong'),
+                positive: document.getElementById('stimulus-positive'),
+                reset: document.getElementById('reset-sim'),
+                presetCalm: document.getElementById('preset-calm'),
+                presetAnxious: document.getElementById('preset-anxious'),
+                presetStressed: document.getElementById('preset-stressed') 
+            };
+
+            const display = {
+                indicator: document.getElementById('status-indicator'),
+                statusText: document.getElementById('status-text'),
+                stimulus: document.getElementById('stimulus-display'),
+                // response: УДАЛЕН
+                digitalLimbic: document.getElementById('digital-limbic'),
+                digitalPfc: document.getElementById('digital-pfc'),
+                energyBar: document.getElementById('pfc-energy-bar'),
+                limbicExcitationBar: document.getElementById('limbic-excitation-bar'),
+                hijackIndicator: document.getElementById('hijack-indicator'),
+                // НОВИНКА
+                recoveryRate: document.getElementById('recovery-rate-display'),
+                eventLog: document.getElementById('event-log')
+            };
+
+            const modal = {
+                container: document.getElementById('modal'),
+                title: document.getElementById('modal-title'),
+                content: document.getElementById('modal-content'),
+                close: document.getElementById('modal-close'),
+                helpLimbic: document.getElementById('help-limbic'),
+                helpPfc: document.getElementById('help-pfc'),
+                helpModel: document.getElementById('help-model'),
+                helpPresets: document.getElementById('help-presets') 
+            };
+
+            // --- Настройка модальных окон ---
+            const explanations = {
+                model: {
+                    title: "Модель Гоулмана и 'Захват Амигдалы'",
+                    content: "Эта симуляция основана на модели Дэниела Гоулмана, описанной в книге 'Эмоциональный Интеллект'.<br><br><strong>Два Пути:</strong><br>1. <strong>'Быстрый Путь' (Лимбическая Система):</strong> Стимул (напр., громкий звук) мгновенно попадает в Амигдалу (сигнализацию). Она немедленно запускает реакцию 'Бей или Беги', выбрасывая гормоны стресса. Это быстро, но неточно.<br>2. <strong>'Медленный Путь' (Префронтальная Кора):</strong> Тот же стимул идет 'длинным путем' в Кору (рациональный мозг). Кора анализирует: 'Это реальная угроза или просто упала книга?'.<br><br><strong>Захват Амигдалы (Amygdala Hijack):</strong><br>Это происходит, когда 'Быстрый Путь' настолько силен (из-за мощного стимула или высокого фонового стресса), что он 'перегружает' и 'отключает' 'Медленный Путь'.<br><br>В этой симуляции 'Захват' происходит, когда Амигдала > 80. В этот момент эффективность вашей Саморегуляции (ПФК) падает в 5 раз. Вы 'зацикливаетесь' в гневе или панике и не можете 'достучаться' до рациональной части, пока реакция немного не спадет сама (ниже 70)."
+                },
+                limbic: {
+                    title: "Лимбическая Система ('Быстрый Путь')",
+                    content: "Это 'древний' мозг, отвечающий за выживание. <br><br><strong>Амигдала (Чувствительность):</strong> 'Датчик дыма' вашего мозга. Высокая чувствительность = датчик срабатывает от малейшего 'дымка' (стресса), даже если 'пожара' нет.<br><br><strong>Гиппокамп (Контекст):</strong> 'Библиотекарь'. Он смотрит на 'дымок' и сверяется с 'журналом': 'А, это просто тост подгорел, а не пожар'. Высокий контекст (опыт) = Гиппокамп быстро 'успокаивает' Амигдалу.<br><br><strong>Фоновый Стресс:</strong> Уровень 'взвинченности' по умолчанию.<br><br><strong>Возбуждение ЛС (Инерция):</strong> Это 'гормональный фон'. Когда Амигдала (сигнализация) активна, этот уровень медленно нарастает, создавая 'инерцию' стресса (как адреналин), которая потом медленно спадает и пассивно 'утомляет' ПФК."
+                },
+                pfc: {
+                    title: "Префронтальная Кора ('Медленный Мозг')",
+                    content: "Это 'рациональная', исполнительная часть мозга.<br><br><strong>Самосознание:</strong> Ваша способность 'заметить' в реальном времени, что Амигдала 'завелась'. <i>Тратит Ресурс ПФК.</i><br><br><strong>Саморегуляция:</strong> 'Сила воли' или 'тормоз'. Это способность 'вмешаться' и сказать Амигдале: 'Стоп'. <i>Тратит Ресурс ПФК.</i><br><br><strong>Ресурс ПФК:</strong> Это 'бюджет' вашего самоконтроля. Его скорость восстановления <strong>напрямую зависит от ваших параметров</strong> Самосознания и Саморегуляции. Высокий EQ = быстрое восстановление.<br><br>Если ресурс истощен (индикатор красный), ПФК 'ОТКЛЮЧЕТСЯ' (загорается красный индикатор) и не может ни 'осознавать', ни 'регулировать', пока не 'наберет силы' (восстановится до ~70%)."
+                },
+                presets: {
+                    title: "Профили (Предустановки)",
+                    content: "Эти кнопки мгновенно настраивают все ползунки, чтобы смоделировать разные типы личности.<br><br><strong>Профиль: Спокойный</strong><br>Низкая чувствительность Амигдалы, высокий Контекст (опыт), низкий Фоновый Стресс, высокий EQ (Самосознание и Регуляция). Такого человека сложно вывести из себя.<br><br><strong>Профиль: Тревожный</strong><br>Высокая чувствительность Амигдалы, низкий Контекст (все кажется новым и страшным), высокий Фоновый Стресс, низкий EQ. Этот профиль наиболее склонен к 'Захвату Амигдалы' и 'зацикливанию'.<br><br><strong>Профиль: В Стрессе (Низкий EQ)</strong><br>Уже 'взвинченный' профиль (средний Фоновый Стресс, высокая Чувствительность), но главное - очень низкое Самосознание и Регуляция. Он не может справиться даже со средним стимулом."
+                }
+            }; 
+
+            function showModal(type) {
+                modal.title.innerText = explanations[type].title;
+                modal.content.innerHTML = explanations[type].content;
+                modal.container.classList.remove('opacity-0', 'pointer-events-none');
+            }
+            
+            function closeModal() {
+                modal.container.classList.add('opacity-0', 'pointer-events-none');
+            }
+
+            modal.helpLimbic.addEventListener('click', () => showModal('limbic'));
+            modal.helpPfc.addEventListener('click', () => showModal('pfc'));
+            modal.helpModel.addEventListener('click', () => showModal('model'));
+            modal.helpPresets.addEventListener('click', () => showModal('presets')); 
+            modal.close.addEventListener('click', closeModal);
+            modal.container.addEventListener('click', (e) => {
+                if (e.target === modal.container) {
+                    closeModal();
+                }
+            });
+
+            const stimuliPool = [
+                // Слабые
+                { type: 'weak', text: "Слабый стимул: 'Коллега не поздоровался'", value: 120 },
+                { type: 'weak', text: "Слабый стимул: 'Застряли в пробке'", value: 130 },
+                { type: 'weak', text: "Слабый стимул: 'Медленный интернет'", value: 125 },
+                { type: 'weak', text: "Слабый стимул: 'Небольшая ошибка в отчете'", value: 130 },
+                { type: 'weak', text: "Слабый стимул: 'Кто-то занял ваше место'", value: 120 },
+                // Усилены стимулы
+                { type: 'strong', text: "Сильный стимул: 'Публичная критика от начальника'", value: 250 },
+                { type: 'strong', text: "Сильный стимул: 'Резко подрезали на дороге'", value: 280 },
+                { type: 'strong', text: "Сильный стимул: 'Спор с близким человеком'", value: 260 },
+                { type: 'strong', text: "Сильный стимул: 'Неожиданная плохая новость'", value: 300 },
+                { type: 'strong', text: "Сильный стимул: 'Обвинение в том, чего вы не делали'", value: 290 },
+                // Позитивные
+                { type: 'positive', text: "Позитивный стимул: 'Внезапная похвала'", value: -100 },
+                { type: 'positive', text: "Позитивный стимул: 'Получение хороших новостей'", value: -120 },
+                { type: 'positive', text: "Позитивный стимул: 'Приятный сюрприз'", value: -110 },
+            ];
+
+            function triggerStimulus(type) {
+                const options = stimuliPool.filter(s => s.type === type);
+                const stimulus = options[Math.floor(Math.random() * options.length)];
+                startSimulation(stimulus.value, stimulus.text);
+            }
+
+            // --- Настройка ползунков ---
+            for (const key in sliders) {
+                if (sliders[key]) { 
+                    sliders[key].addEventListener('input', (e) => {
+                        if (values[key]) {
+                            values[key].innerText = e.target.value;
+                        }
+                        // НОВИНКА: При изменении ползунков ПФК, обновляем индикатор восстановления
+                        if (key === 'awareness' || key === 'regulation') {
+                            updateRecoveryRateDisplay();
+                        }
+                    });
+                }
+            }
+            
+            // НОВИНКА: Функция для обновления индикатора Восстановления
+            function updateRecoveryRateDisplay() {
+                const pfcAwareness = sliders.awareness.value / 100;
+                const pfcRegulation = sliders.regulation.value / 100;
+                const recoveryRate = (pfcAwareness + pfcRegulation) / 2.0;
+                let baseRecovery = 0.05 + recoveryRate * 0.2;
+                display.recoveryRate.innerText = baseRecovery.toFixed(2);
+            }
+
+
+            // --- Функции для Предустановок ---
+            function updateSliderUI(slider, value) {
+                slider.value = value;
+                slider.dispatchEvent(new Event('input'));
+            }
+
+            function setPreset(type) {
+                if (type === 'calm') {
+                    updateSliderUI(sliders.amygdala, 20);
+                    updateSliderUI(sliders.hippocampus, 80);
+                    updateSliderUI(sliders.stress, 5);
+                    updateSliderUI(sliders.awareness, 80);
+                    updateSliderUI(sliders.regulation, 80);
+                } else if (type === 'anxious') {
+                    updateSliderUI(sliders.amygdala, 80);
+                    updateSliderUI(sliders.hippocampus, 20);
+                    // ИЗМЕНЕНИЕ: Фоновый стресс установлен на 15
+                    updateSliderUI(sliders.stress, 15); 
+                    updateSliderUI(sliders.awareness, 40);
+                    updateSliderUI(sliders.regulation, 30);
+                } else if (type === 'stressed') { 
+                    updateSliderUI(sliders.amygdala, 70); 
+                    updateSliderUI(sliders.hippocampus, 30);
+                    updateSliderUI(sliders.stress, 25);
+                    updateSliderUI(sliders.awareness, 20); 
+                    updateSliderUI(sliders.regulation, 20); 
+                }
+                updateRecoveryRateDisplay(); // Обновляем индикатор после установки пресета
+                resetSimulation(true); 
+            }
+
+            buttons.presetCalm.addEventListener('click', () => setPreset('calm'));
+            buttons.presetAnxious.addEventListener('click', () => setPreset('anxious'));
+            buttons.presetStressed.addEventListener('click', () => setPreset('stressed')); 
+
+
+            // --- Логика Симуляции ---
+            let simState = {
+                limbicExcitation: 0,  // "Проблема" (Амигдала, Оранжевый график)
+                pfcEffort: 0,         // "Контроль" (Выход ПФК, Синий график)
+                overallState: 0,
+                stimulus: 0,
+                time: 0,
+                isHijacked: false,    // Состояние "Отключения"
+                pfcResource: 100.0,   // "Топливо" (Пунктирный график)
+                limbicInertia: 0.0    // "Инерция" (Индикатор-полоска)
+            };
+
+            let simInterval = null;
+            const MAX_TIME = 150; // 150 тиков
+            const TICK_RATE = 100; // 100мс (10 тиков в секунду)
+
+            // НОВИНКА: Функция Журнала
+            function logEvent(message, type = 'info') {
+                const timeStamp = simState.time;
+                const logEntry = document.createElement('div');
+                
+                let color = 'text-gray-400';
+                if (type === 'stimulus') color = 'text-yellow-300';
+                if (type === 'hijack') color = 'text-red-400 font-bold';
+                if (type === 'recovery') color = 'text-blue-300';
+
+                logEntry.className = color;
+                logEntry.innerHTML = `<span class="text-gray-500">[T:${timeStamp.toString().padStart(3, '0')}]</span> ${message}`;
+                
+                // Удаляем "Ожидание..."
+                const placeholder = display.eventLog.querySelector('.text-gray-500');
+                if (placeholder) placeholder.remove();
+
+                display.eventLog.appendChild(logEntry);
+                // Автопрокрутка
+                display.eventLog.scrollTop = display.eventLog.scrollHeight;
+            }
+
+
+            // --- Настройка Графика ---
+            const ctx = document.getElementById('reactionChart').getContext('2d');
+            const reactionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: MAX_TIME + 1}, (_, i) => i),
+                    datasets: [
+                        {
+                            label: 'Возбуждение ЛС (Амигдала)',
+                            data: Array(MAX_TIME + 1).fill(null), 
+                            borderColor: 'rgb(249, 115, 22)', 
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            borderWidth: 2, 
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 1, 
+                            pointHoverRadius: 3
+                        },
+                        {
+                            label: 'Усилие ПФK (Контроль)',
+                            data: Array(MAX_TIME + 1).fill(null), 
+                            borderColor: 'rgb(59, 130, 246)', 
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2, 
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 1, 
+                            pointHoverRadius: 3
+                        },
+                        {
+                            label: 'Ресурс ПФК (Топливо)',
+                            data: Array(MAX_TIME + 1).fill(null),
+                            borderColor: 'rgba(59, 130, 246, 0.3)', 
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            borderDash: [5, 5], 
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 110,
+                            ticks: { color: '#9ca3af' }
+                        },
+                        x: {
+                            ticks: { color: '#9ca3af' },
+                            title: {
+                                display: true,
+                                text: 'Тики симуляции (150 тиков = 15с)', 
+                                color: '#9ca3af'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#d1d5db', usePointStyle: true, pointStyle: 'line' }
+                        }
+                    },
+                    animation: {
+                        duration: 0 
+                    }
+                }
+            });
+
+            function updateChart() {
+                const dataLimbic = reactionChart.data.datasets[0].data;
+                const dataPfcEffort = reactionChart.data.datasets[1].data;
+                const dataPfcResource = reactionChart.data.datasets[2].data; 
+                
+                dataLimbic.shift();
+                dataLimbic.push(simState.limbicExcitation);
+                
+                dataPfcEffort.shift();
+                dataPfcEffort.push(simState.pfcEffort);
+
+                dataPfcResource.shift(); 
+                dataPfcResource.push(simState.pfcResource); 
+
+                reactionChart.update('none'); 
+            }
+
+            function updateUI() {
+                const state = Math.min(100, simState.overallState);
+                const stateValue = Math.round(state);
+                
+                display.digitalLimbic.innerText = Math.round(simState.limbicExcitation);
+                display.digitalPfc.innerText = Math.round(simState.pfcEffort);
+                
+                const energyPercent = simState.pfcResource;
+                display.energyBar.style.width = `${energyPercent}%`;
+                
+                display.energyBar.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500');
+                if (energyPercent < 30) {
+                    display.energyBar.classList.add('bg-red-500');
+                } else if (energyPercent < 60) {
+                    display.energyBar.classList.add('bg-yellow-500');
+                } else {
+                    display.energyBar.classList.add('bg-green-500');
+                }
+                
+                display.limbicExcitationBar.style.width = `${simState.limbicInertia}%`;
+                
+                let color, text;
+                display.indicator.className = "w-48 h-48 flex items-center justify-center mb-4 shadow-inner";
+                
+                if (simState.isHijacked) {
+                    color = 'bg-red-600';
+                    text = `ЗАХВАТ! (${stateValue})`; // ИЗМЕНЕНИЕ
+                } else if (state > 80) {
+                    color = 'bg-red-500';
+                    text = `Ярость (${stateValue})`; // ИЗМЕНЕНИЕ
+                } else if (state > 50) {
+                    color = 'bg-orange-500';
+                    text = `Возбуждение (${stateValue})`; // ИЗМЕНЕНИЕ
+                } else if (state > 20) {
+                    color = 'bg-yellow-500';
+                    text = `Тревога (${stateValue})`; // ИЗМЕНЕНИЕ
+                } else {
+                    color = 'bg-green-500';
+                    text = `Спокойствие (${stateValue})`; // ИЗМЕНЕНИЕ
+                }
+                
+                display.indicator.classList.add(color);
+                display.statusText.innerText = text;
+
+                // 6. Обновляем скорость анимации "Blob"
+                let shapeDuration = 15;
+                let pulseDuration = 4;
+                
+                if (state > 0) {
+                    shapeDuration = Math.max(2, 15 - (state / 100) * 13); // от 15s до 2s
+                    pulseDuration = Math.max(0.5, 4 - (state / 100) * 3.5); // от 4s до 0.5s
+                }
+                if (simState.isHijacked) {
+                    shapeDuration = 1.5; // "Кипение"
+                    pulseDuration = 0.4; // "Кипение"
+                }
+                
+                display.indicator.style.animationDuration = `${shapeDuration}s, ${pulseDuration}s`;
+            }
+            
+            function simulationTick() {
+                if (simState.time >= MAX_TIME) {
+                    resetSimulation(false); 
+                    return; 
+                }
+                
+                simState.time++;
+                
+                const params = {
+                    amygdalaSens: sliders.amygdala.value / 100,       
+                    hippocampusCtx: sliders.hippocampus.value / 100,   
+                    pfcAwareness: sliders.awareness.value / 100,     
+                    pfcRegulation: sliders.regulation.value / 100,
+                };
+                const baselineStress = parseInt(sliders.stress.value, 10);
+                
+                // === НОВАЯ ЛОГИКА СИМУЛЯЦИИ ===
+
+                // 1. СТИМУЛ
+                let limbicBoost = (simState.stimulus * params.amygdalaSens);
+                if (limbicBoost > 0) { 
+                    simState.limbicExcitation += limbicBoost;
+                } else { 
+                    simState.limbicExcitation += limbicBoost; 
+                }
+                simState.stimulus *= 0.6; 
+                if (Math.abs(simState.stimulus) < 1) simState.stimulus = 0;
+
+
+                // 2. ПФК (Ресурс и Усилие)
+                
+                const recoveryRate = (params.pfcAwareness + params.pfcRegulation) / 2.0; 
+                let baseRecovery = 0.05 + recoveryRate * 0.2; 
+                let hijackRecharge = 0.2 + recoveryRate * 0.5; 
+                
+                if (simState.isHijacked) {
+                    // --- РЕЖИM "ОТКЛЮЧЕНО" (ПЕРЕЗАРЯДКА) ---
+                    display.hijackIndicator.classList.remove('opacity-0');
+                    
+                    simState.pfcEffort *= 0.8; 
+                    simState.pfcResource += hijackRecharge; 
+                    
+                    if (simState.pfcResource > 70) {
+                        simState.isHijacked = false;
+                        logEvent('ПФК Восстановлена!', 'recovery');
+                    }
+
+                } else {
+                    // --- РЕЖИМ "РАБОТЫ" (БОРЬБА) ---
+                    display.hijackIndicator.classList.add('opacity-0');
+                    
+                    let targetEffort = simState.limbicExcitation * params.pfcAwareness;
+                    simState.pfcEffort += (targetEffort - simState.pfcEffort) * 0.4; 
+                    
+                    let brakePower = (simState.pfcEffort * params.pfcRegulation) * 0.5; 
+                    
+                    let passiveDrain = (simState.limbicExcitation * 0.003) + (simState.limbicInertia * 0.005); 
+                    let effortDrain = (simState.pfcEffort * 0.005);        
+                    let brakeDrain = (brakePower * 0.01);                 
+                    
+                    let totalDrain = passiveDrain + effortDrain + brakeDrain;
+                    
+                    simState.pfcResource += (baseRecovery - totalDrain);
+                    
+                    if (simState.pfcResource > 0) {
+                        simState.limbicExcitation -= brakePower;
+                    }
+
+                    if (simState.pfcResource <= 0) {
+                        simState.isHijacked = true;
+                        simState.pfcResource = 0;
+                        logEvent('ЗАХВАТ! Ресурс ПФК истощен!', 'hijack');
+                    }
+                }
+
+                // 3. ЛИМБИЧЕСКАЯ СИСТЕМА (Затухание)
+                
+                if (simState.isHijacked) {
+                    simState.limbicExcitation *= 0.998; 
+                } else {
+                    let selfDecayFactor = 1.0 - (simState.limbicExcitation / 110) * 0.5; 
+                    simState.limbicExcitation *= (0.9 + selfDecayFactor * 0.09); 
+                    
+                    simState.limbicExcitation -= (simState.limbicExcitation * params.hippocampusCtx * 0.05);
+                }
+
+                simState.limbicInertia += (simState.limbicExcitation - simState.limbicInertia) * 0.05; 
+                simState.limbicInertia -= 0.02; 
+                simState.limbicInertia = Math.max(0, Math.min(100, simState.limbicInertia));
+
+                // 4. ОГРАНИЧИТЕЛИ
+                const baseline = Math.max(baselineStress, simState.limbicInertia); 
+                simState.limbicExcitation = Math.max(baseline, Math.min(110, simState.limbicExcitation));
+                simState.pfcEffort = Math.max(0, simState.pfcEffort);
+                simState.pfcResource = Math.max(0, Math.min(100, simState.pfcResource));
+                
+                // 5. Расчет итогового состояния (для UI)
+                simState.overallState = Math.max(0, simState.limbicExcitation - simState.pfcEffort);
+
+                updateChart();
+                updateUI();
+            } 
+
+            function startSimulation(value, text) {
+                simState.stimulus = value;
+                display.stimulus.innerText = text;
+                logEvent(text, 'stimulus'); // Логируем стимул
+                
+                if (value < 0) {
+                    simState.isHijacked = false;
+                }
+            }
+
+            function stopSimulation() {
+                if(simInterval) {
+                    clearInterval(simInterval);
+                    simInterval = null;
+                }
+            }
+
+            function resetSimulation(hard = true) {
+                if (hard) {
+                    simState.pfcResource = 100.0; 
+                    simState.limbicInertia = 0.0;
+                    // Очищаем лог
+                    display.eventLog.innerHTML = '<div class="text-gray-500">Ожидание событий...</div>';
+                }
+
+                const baselineStress = parseInt(sliders.stress.value, 10);
+                
+                simState = { 
+                    limbicExcitation: baselineStress, 
+                    pfcEffort: 0, 
+                    overallState: baselineStress, 
+                    stimulus: 0, 
+                    time: 0, 
+                    isHijacked: false,
+                    pfcResource: simState.pfcResource, 
+                    limbicInertia: simState.limbicInertia 
+                };
+                
+                if (hard) {
+                    reactionChart.data.datasets[0].data = Array(MAX_TIME + 1).fill(null);
+                    reactionChart.data.datasets[1].data = Array(MAX_TIME + 1).fill(null);
+                    reactionChart.data.datasets[2].data = Array(MAX_TIME + 1).fill(null); 
+                    reactionChart.data.datasets[0].data[MAX_TIME] = baselineStress;
+                    reactionChart.data.datasets[1].data[MAX_TIME] = 0;
+                    reactionChart.data.datasets[2].data[MAX_TIME] = simState.pfcResource; 
+                }
+                
+                simState.time = 0;
+                simState.stimulus = 0;
+
+                if (hard) {
+                    display.stimulus.innerText = "Ожидание стимула...";
+                }
+                
+                updateUI();
+                reactionChart.update('none'); 
+            }
+
+            // --- Назначение кнопок ---
+            buttons.weak.addEventListener('click', () => {
+                triggerStimulus('weak');
+            });
+            buttons.strong.addEventListener('click', () => {
+                triggerStimulus('strong');
+            });
+            buttons.positive.addEventListener('click', () => {
+                triggerStimulus('positive');
+            });
+            buttons.reset.addEventListener('click', () => {
+                resetSimulation(true);
+                if (!simInterval) {
+                    simInterval = setInterval(simulationTick, TICK_RATE);
+                }
+            });
+            
+            // Инициализация при загрузке
+            updateRecoveryRateDisplay(); // Инициализируем индикатор восстановления
+            resetSimulation(true);
+
+            if (simInterval) clearInterval(simInterval); 
+            simInterval = setInterval(simulationTick, TICK_RATE); 
+        });
+    </script>
+</body>
+</html>
+
+
+
+
